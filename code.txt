@@ -1,0 +1,112 @@
+#define BLYNK_TEMPLATE_ID "xxxx"
+#define BLYNK_DEVICE_NAME "xxxx"
+#define BLYNK_AUTH_TOKEN "xxxxx";
+#include <ESP8266WiFi.h>
+#include <BlynkSimpleEsp8266.h>
+BlynkTimer timer;
+char ssid[] = "xxxx";
+char pass[] = "xxxx";
+char auth[] = BLYNK_AUTH_TOKEN;
+
+#define relay D1
+int irrigautomode = 0;
+int relayonoff;
+int Moisture;
+float moisture_percentage;
+
+void myTimerEvent()
+{
+  Blynk.virtualWrite(V1, millis() / 1000);
+  Blynk.virtualWrite(V4, millis() / 1000);
+  Blynk.virtualWrite(V2, millis() / 1000);
+}
+
+
+BLYNK_WRITE(V0)
+{ 
+  relayonoff = param.asInt();
+  if (relayonoff == 0)
+  {
+     digitalWrite(relay, relayonoff);
+     Serial.println("Sprinkler on");
+     Blynk.virtualWrite(V0, relayonoff);
+  }
+  else if (relayonoff == 1) 
+  {
+    digitalWrite(relay, relayonoff);
+    Serial.println("Sprinkler off");
+    Blynk.virtualWrite(V0, relayonoff);
+  }
+}
+
+BLYNK_WRITE(V5)
+{ 
+  irrigautomode = param.asInt();
+}
+
+void MoistureSense()
+{
+  Moisture = analogRead(A0);
+  float moisture_percentage = ((Moisture/1023.00) * 100);
+  Serial.print("Moisture Percentage = ");
+  Serial.print(moisture_percentage);
+  Blynk.virtualWrite(V1, moisture_percentage);  
+  Serial.print("%\n");
+  delay(1000);
+}
+
+void autoirrigation()
+{
+    int Moisture = analogRead(A0);
+     if (Moisture < 500)
+    {
+          Serial.println(Moisture);
+          MoistureON();
+    }
+     
+    else if (Moisture > 500) 
+    {
+     Serial.println(Moisture);
+     MoistureOFF();
+    }
+}
+
+void MoistureON()
+{
+  Serial.println("Valve is On");
+  digitalWrite(relay, LOW);
+  delay(5000);
+  digitalWrite(relay, HIGH);
+  delay(2000);
+}
+
+void MoistureOFF()
+{
+  digitalWrite(relay, HIGH);
+  Serial.println("Valve is Off"); 
+}
+
+void setup() 
+{  
+  Serial.begin(9600);
+  Blynk.begin(auth, ssid, pass);
+  pinMode(relay,OUTPUT);
+  digitalWrite(relay, HIGH);
+  timer.setInterval(3000L, MoistureSense);
+}
+
+void loop()
+{
+   Blynk.run();
+   timer.run();
+   if(irrigautomode == 1)
+    {
+     autoirrigation();
+     Serial.println("Automatic Operation ");
+     delay(2000);
+   }
+   else if(irrigautomode == 0){
+    Serial.println("Manual Operation ");
+    delay(2000);
+   } 
+}
